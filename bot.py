@@ -23,7 +23,7 @@ import random
 
 PREFIX = '$'
 
-client = commands.Bot(command_prefix = PREFIX, intents = discord.Intents.all())
+client = commands.Bot(command_prefix = PREFIX)
 client.remove_command('help')
 hello = ['hello', 'hi', 'привет', 'хай', 'здарова', 'здравствуйте', 'ky', 'privet', 'ку']
 goodbye = ['пока', 'bye']
