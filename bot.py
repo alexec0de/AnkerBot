@@ -20,7 +20,7 @@ from Cybernator import Paginator
 import asyncio
 import random
 
-PREFIX = '#'
+PREFIX = '$'
 
 client = commands.Bot(command_prefix = PREFIX, intents = discord.Intents.all())
 client.remove_command('help')
