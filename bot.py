@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 from discord.utils import get
-from discord_components import DiscordComponents, Button, ButtonStyle, Select, SelectOption
+#,from discord_components import DiscordComponents, Button, ButtonStyle, Select, SelectOption
 import contextlib
 import io
 import os
@@ -9,11 +9,10 @@ import logging
 import aiohttp
 import aeval
 import sys
-import time
+#import time
 import youtube_dl
 
 
-import datetime
 import requests
 from db import DataBase
 from Cybernator import Paginator
@@ -21,9 +20,9 @@ from Cybernator import Paginator
 import asyncio
 import random
 
-PREFIX = '$'
+PREFIX = '#'
 
-client = commands.Bot(command_prefix = PREFIX)
+client = commands.Bot(command_prefix = PREFIX, intents = discord.Intents.all())
 client.remove_command('help')
 hello = ['hello', 'hi', 'привет', 'хай', 'здарова', 'здравствуйте', 'ky', 'privet', 'ку']
 goodbye = ['пока', 'bye']
@@ -46,7 +45,6 @@ async def on_ready():
 		for member in guild.members:
 			#print(member)
 			await db.insert_new_member(member)
-	DiscordComponents(client)
 	print('BOT ready')
 	
 	
@@ -114,7 +112,7 @@ async def help(ctx):
 	
 	emd2 = discord.Embed(title = 'Основные команды', description = f'{PREFIX}time - Узнать время\n{PREFIX}server - Узнать инфу о сервере')
 	emd3 = discord.Embed(title = 'Игры', description = f'{PREFIX}8ball - Игра про макический шарик')
-	emd4 = discord.Embed(title= 'Экономика', description = f'{PREFIX}cash - Узнать свой баланс\n{PREFIX}award - Добавить пользователю баланс')
+	emd4 = discord.Embed(title= 'Экономика', description = f'{PREFIX}cash - Узнать свой баланс\n{PREFIX}award - Добавить пользователю баланс\n{PREFIX}add-role- Добавить роль в магазин\n{PREFIX}rem-role - Удалить роль из магазина\n{PREFIX}buy - Купить роль\n{PREFIX}shop - Просмотреть доступные роли')
 
 	emds = [emd, emd2, emd3, emd4]
 	
@@ -131,18 +129,7 @@ async def mute(ctx, member:discord.Member):
 	mute_role = discord.utils.get(ctx.message.guild.roles, name='mute')
 	await member.add_roles(mute_role)
 	
-	
-#time
-@client.command()
-async def time(ctx):
-	emb = discord.Embed(title = 'Время', colour = discord.Color.green())
-	emb.set_author(name = client.user.name, icon_url = client.user.avatar_url)
-	emb.set_footer(text = ctx.author.name, icon_url = ctx.author.avatar_url)
-	
-	now_date = datetime.datetime.now()
-	emb.add_field(name='Time', value = "Time:{}".format(now_date))
-	
-	await ctx.send(embed = emb)
+
 	
 
 #user info
@@ -232,9 +219,60 @@ async def ball(ctx, ques=""):
 		await ctx.send(f" {random.choice(choices)}")
 
 #coin
-#soon
+#soonz
+#add-role
+@client.command(name = 'add-role')
+@commands.has_permissions(administrator = True)
+async def add_role(ctx, role: discord.Role, cost: int=0):
+	if cost < 0:
+		await ctx.send("Сумма не должна быть меньше 0")
+	else:
+		await db.insert_new_role(role, cost) 
+		await ctx.message.add_reaction("💖")
 
+@client.command(name = 'rem-role')
+@commands.has_permissions(administrator = True)
+async def remove_role(ctx, role: discord.Role):
+        if ctx.guild.get_role(role.id) is None:
+            await ctx.send("Роли не существует")
+        else:
+            await db.delete_role_from_shop(role)
+            await ctx.message.add_reaction("💖")
+            
+@client.command(name = 'buy')
+async def buy_role(ctx, role: discord.Role):
+        if ctx.guild.get_role(role.id) is None:
+            await ctx.send("Роли не существует")
+        elif role in ctx.author.roles:
+            await ctx.send("У вас уже имеется такая роль")
+        else:
+            role_data = await db.get_shop_data(role)
+            balance = await db.get_data(ctx.author)
 
+            if balance["balance"] < role_data["cost"]:
+                await ctx.send("Недостаточно средств")
+            elif balance["balance"] <= 0:
+                await ctx.send("Недостаточно средств")
+            else:
+                await db.update_member("UPDATE users SET balance = balance - ? WHERE member_id = ? AND guild_id = ?", [role_data["cost"], ctx.author.id, ctx.guild.id])
+
+                await ctx.author.add_roles(role)
+                await ctx.message.add_reaction("💖")
+                
+@client.command()
+async def shop(ctx):
+        embed = discord.Embed(title="Магазин ролей")
+
+        data = await db.get_shop_data(ctx.guild.id, all_data=True)
+        for row in data:
+            if ctx.guild.get_role(row["role_id"]) is not None:
+                embed.add_field(
+                    name=f"Стоимость: {row['cost']}",
+                    value=f"Роль: {ctx.guild.get_role(row['role_id']).mention}",
+                    inline=False
+                )
+
+        await ctx.send(embed=embed)
 
 #error
 @clear.error
